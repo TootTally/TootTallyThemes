@@ -2,12 +2,15 @@
 using BepInEx;
 using BepInEx.Configuration;
 using HarmonyLib;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using TootTallyCore.Utils.Assets;
 using TootTallyCore.Utils.TootTallyModules;
 using TootTallySettings;
 using UnityEngine;
 
-namespace TootTally.ModuleTemplate
+namespace TootTallyThemes
 {
     [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
     [BepInDependency("TootTallyCore", BepInDependency.DependencyFlags.HardDependency)]
@@ -16,13 +19,15 @@ namespace TootTally.ModuleTemplate
     {
         public static Plugin Instance;
 
-        private const string CONFIG_NAME = "ModuleTemplate.cfg";
+        internal const string CONFIG_NAME = "TootTally.cfg";
+        private const string CONFIG_FIELD = "Themes";
+        private const string DEFAULT_THEME = "Default";
         private Harmony _harmony;
         public ConfigEntry<bool> ModuleConfigEnabled { get; set; }
         public bool IsConfigInitialized { get; set; }
 
         //Change this name to whatever you want
-        public string Name { get => PluginInfo.PLUGIN_NAME; set => Name = value; }
+        public string Name { get => "Themes"; set => Name = value; }
 
         public static TootTallySettingPage settingPage;
 
@@ -41,7 +46,7 @@ namespace TootTally.ModuleTemplate
         private void TryInitialize()
         {
             // Bind to the TTModules Config for TootTally
-            ModuleConfigEnabled = TootTallyCore.Plugin.Instance.Config.Bind("Modules", "<insert module name here>", true, "<insert module description here>");
+            ModuleConfigEnabled = TootTallyCore.Plugin.Instance.Config.Bind("Modules", "Themes", true, "Enable color customization for TootTally");
             TootTallyModuleManager.AddModule(this);
             TootTallySettings.Plugin.Instance.AddModuleToSettingPage(this);
         }
@@ -50,18 +55,35 @@ namespace TootTally.ModuleTemplate
         {
             string configPath = Path.Combine(Paths.BepInExRootPath, "config/");
             ConfigFile config = new ConfigFile(configPath + CONFIG_NAME, true) { SaveOnConfigSet = true };
-            // Set your config here by binding them to the related ConfigEntry
-            // Example:
-            // Unlimited = config.Bind(CONFIG_FIELD, "Unlimited", DEFAULT_UNLISETTING)
+            ThemeName = config.Bind(CONFIG_FIELD, "ThemeName", DEFAULT_THEME.ToString());
+            config.SettingChanged += ThemeManager.Config_SettingChanged;
 
-            settingPage = TootTallySettingsManager.AddNewPage("ModulePageName", "HeaderText", 40f, new Color(0,0,0,0));
-            if (settingPage != null) {
-                // Use TootTallySettingPage functions to add your objects to TootTallySetting
-                // Example:
-                // page.AddToggle(name, option.Unlimited);
+            AssetManager.LoadAssets(Path.Combine(Path.GetDirectoryName(Instance.Info.Location), "Assets"));
+
+            string targetThemePath = Path.Combine(Paths.BepInExRootPath, "Themes");
+            if (!Directory.Exists(targetThemePath))
+            {
+                string sourceThemePath = Path.Combine(Path.GetDirectoryName(Instance.Info.Location), "Themes");
+                //TootTallyLogger.LogInfo("Theme folder not found. Attempting to move folder from " + sourceThemePath + " to " + targetThemePath);
+                if (Directory.Exists(sourceThemePath))
+                    Directory.Move(sourceThemePath, targetThemePath);
+                else
+                {
+                    //TootTallyLogger.LogError("Source Theme Folder Not Found. Cannot Create Theme Folder. Download the mod again to fix the issue.");
+                    return;
+                }
             }
 
-            _harmony.PatchAll(typeof(ModuleTemplatePatches));
+            TootTallySettingPage mainPage = TootTallySettingsManager.GetSettingPageByName("TootTally");
+            var filePaths = Directory.GetFiles(targetThemePath);
+            List<string> fileNames = new List<string>();
+            fileNames.AddRange(new string[] { "Day", "Night", "Random", "Default" });
+            filePaths.ToList().ForEach(path => fileNames.Add(Path.GetFileNameWithoutExtension(path)));
+            mainPage.AddLabel("GameThemesLabel", "Game Theme", 24f, TMPro.FontStyles.Normal, TMPro.TextAlignmentOptions.BottomLeft);
+            mainPage.AddDropdown("Themes", ThemeName, fileNames.ToArray()); //Have to fix dropdown default value not working
+            mainPage.AddButton("ResetThemeButton", new Vector2(350, 50), "Refresh Theme", ThemeManager.RefreshTheme);
+
+            _harmony.PatchAll(typeof(ThemeManager));
             LogInfo($"Module loaded!");
         }
 
@@ -72,13 +94,6 @@ namespace TootTally.ModuleTemplate
             LogInfo($"Module unloaded!");
         }
 
-        public static class ModuleTemplatePatches
-        {
-            // Apply your Trombone Champ patches here
-        }
-
-        // Add your ConfigEntry objects that define your configs
-        // Example:
-        // public ConfigEntry<bool> Unlimited { get; set; }
+        public static ConfigEntry<string> ThemeName { get; set; }
     }
 }
