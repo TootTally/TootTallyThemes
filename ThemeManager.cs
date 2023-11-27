@@ -11,6 +11,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnityEngine;
 using TootTallyCore.Utils.TootTallyNotifs;
+using TootTallyCore.Graphics;
 
 namespace TootTallyThemes
 {
@@ -44,7 +45,7 @@ namespace TootTallyThemes
                     Theme.SetCustomTheme(themeName);
                     break;
             }
-            //GameObjectFactory.UpdatePrefabTheme();
+            GameObjectFactory.UpdatePrefabTheme();
         }
 
 
@@ -62,8 +63,8 @@ namespace TootTallyThemes
             TootTallyNotifManager.DisplayNotif("Theme refreshed!", Theme.themeColors.notification.defaultText);
         }
 
-        [HarmonyPatch(typeof(HomeController), nameof(HomeController.Start))]
-        [HarmonyPostfix]
+        [HarmonyPatch(typeof(GameObjectFactory), nameof(GameObjectFactory.OnHomeControllerInitialize))]
+        [HarmonyPrefix]
         public static void Initialize()
         {
             if (_isInitialized) return;
@@ -71,6 +72,16 @@ namespace TootTallyThemes
             SetTheme(Plugin.ThemeName.Value);
             _isInitialized = true;
         }
+
+        [HarmonyPatch(typeof(GameObjectFactory), nameof(GameObjectFactory.OnHomeControllerInitialize))]
+        [HarmonyPostfix]
+
+        public static void OnHomeControllerUpdateFactoryTheme() => GameObjectFactory.UpdatePrefabTheme();
+
+        [HarmonyPatch(typeof(GameObjectFactory), nameof(GameObjectFactory.OnLevelSelectControllerInitialize))]
+        [HarmonyPostfix]
+
+        public static void OnLevelSelectUpdateFactoryTheme() => GameObjectFactory.UpdatePrefabTheme();
 
         [HarmonyPatch(typeof(LevelSelectController), nameof(LevelSelectController.Start))]
         [HarmonyPostfix]

@@ -64,14 +64,10 @@ namespace TootTallyThemes
             if (!Directory.Exists(targetThemePath))
             {
                 string sourceThemePath = Path.Combine(Path.GetDirectoryName(Instance.Info.Location), "Themes");
-                //TootTallyLogger.LogInfo("Theme folder not found. Attempting to move folder from " + sourceThemePath + " to " + targetThemePath);
                 if (Directory.Exists(sourceThemePath))
                     Directory.Move(sourceThemePath, targetThemePath);
                 else
-                {
-                    //TootTallyLogger.LogError("Source Theme Folder Not Found. Cannot Create Theme Folder. Download the mod again to fix the issue.");
                     return;
-                }
             }
 
             TootTallySettingPage mainPage = TootTallySettingsManager.GetSettingPageByName("TootTally");
@@ -82,6 +78,7 @@ namespace TootTallyThemes
             mainPage.AddLabel("GameThemesLabel", "Game Theme", 24f, TMPro.FontStyles.Normal, TMPro.TextAlignmentOptions.BottomLeft);
             mainPage.AddDropdown("Themes", ThemeName, fileNames.ToArray()); //Have to fix dropdown default value not working
             mainPage.AddButton("ResetThemeButton", new Vector2(350, 50), "Refresh Theme", ThemeManager.RefreshTheme);
+
 
             _harmony.PatchAll(typeof(ThemeManager));
             LogInfo($"Module loaded!");

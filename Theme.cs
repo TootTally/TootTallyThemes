@@ -13,7 +13,7 @@ namespace TootTallyThemes
         public const string version = "0.0.2";
         public static bool isDefault;
         public static ThemeColors themeColors;
-
+        
         public static void SetDefaultTheme()
         {
             isDefault = true;
